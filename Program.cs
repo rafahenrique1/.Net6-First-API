@@ -45,23 +45,38 @@ app.MapGet("/products/{id}", ([FromRoute] int id, ApplicationDbContext context) 
     return Results.NotFound();
 });
 
-app.MapPut("/products", (Product product) => 
+app.MapPut("/products/{id}", ([FromRoute] int id, ProductRequest productRequest, ApplicationDbContext context) => 
 {
-    var productSaved = ProductRepository.GetBy(product.Code);
-    productSaved.Name = product.Name;
+    var product = context.Products.Where(p => p.Id == id).Include(p => p.Tags).First();
+
+    var category = context.Category.Where(c => c.Id == productRequest.CategoryId).First();
+
+    product.Code = productRequest.Code;
+    product.Name = productRequest.Name;
+    product.Description = productRequest.Description;
+    product.Category = category;
+    product.Tags = new List<Tag>();
+
+    if(productRequest.Tags != null)
+    {
+        product.Tags = new List<Tag>();
+        foreach (var item in productRequest.Tags)
+        {
+            product.Tags.Add(new Tag { Name = item });
+        }
+    }
+
+    context.SaveChanges();
     return Results.Ok();
 });
 
-app.MapDelete("/products/{code}", ([FromRoute] string code) => 
+app.MapDelete("/products/{id}", ([FromRoute] int id, ApplicationDbContext context) => 
 {
-    var productSaved = ProductRepository.GetBy(code);
-    ProductRepository.Remove(productSaved);
-    return Results.Ok();
-});
+    var product = context.Products.Where(p => p.Id == id).First();
 
-app.MapGet("/configuration/database", (IConfiguration configuration) => 
-{
-    return Results.Ok($"{configuration["database:connection"]}/{configuration["database:port"]}");
+    context.Products.Remove(product);
+    context.SaveChanges();
+    return Results.Ok();
 });
 
 app.Run();
