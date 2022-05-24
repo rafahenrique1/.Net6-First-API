@@ -19,15 +19,26 @@ app.MapPost("/products", (ProductRequest productRequest, ApplicationDbContext co
         Category = category
     };
 
+    if(productRequest.Tags != null)
+    {
+        product.Tags = new List<Tag>();
+        foreach (var item in productRequest.Tags)
+        {
+            product.Tags.Add(new Tag { Name = item });
+        }
+    }
     context.Products.Add(product);
     context.SaveChanges();
     return Results.Created($"/products/{product.Id}", product.Id);
 });
 
 //api.app.com/user/{code} = Route Params
-app.MapGet("/products/{code}", ([FromRoute] string code) => 
+app.MapGet("/products/{id}", ([FromRoute] int id, ApplicationDbContext context) => 
 {
-    var product = ProductRepository.GetBy(code);
+    var product = context.Products.Where(p => p.Id == id)
+    .Include(p => p.Category)
+    .Include(p => p.Tags).First();
+
     if (product != null)
         return Results.Ok(product);
 
